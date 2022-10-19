@@ -1,6 +1,6 @@
 # CompositionMachineVisualizer-frontend
 
-Simple JavaScript frontend for better research of Composition Machine (Arellanes, 2021).
+Simple JavaScript & TypeScript frontend for better research of Composition Machine (Arellanes, 2021).
 
 ## Dependences
 
