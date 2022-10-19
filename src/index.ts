@@ -1,18 +1,9 @@
-import Sigma from "sigma";
-import Graph from "graphology";
 import JSZip from "JSZip";
 import FileSaver from "file-saver";
 
 import { paddIndex, removeAllChilds, replaceAll } from "./util"
-import { blob } from "stream/consumers";
-// import { parse } from "graphology-gexf/browser";
-import { table, time, timeStamp } from "console";
 
-const { Graphviz, graphviz } = require("d3-graphviz/src/graphviz.js");
 const d3_graphviz = require("d3-graphviz");
-const resolveDefaults = require("graphology-utils/defaults");
-const renderSVG = require("graphology-svg/renderer.js") // return string
-var DEFAULTS = require("graphology-svg/defaults.js").DEFAULTS;
 
 // Elements
 const fileInput = document.getElementById("file-input") as HTMLInputElement;
@@ -20,11 +11,11 @@ const columnsInput = document.getElementById("table-column") as HTMLInputElement
 const outputFormats = document.getElementsByName("output-format"); // as HTMLInputElement(s)
 const saveAllButton = document.getElementById("save-all") as HTMLButtonElement;
 const graphTable = document.getElementById("graph-table") as HTMLTableElement;
-const pngDataUrlElement = document.getElementById("png-dataurl") as HTMLImageElement;
+// const pngDataUrlElement = document.getElementById("png-dataurl") as HTMLImageElement;
 const pngCanvas = document.getElementById("png-canvas") as HTMLCanvasElement;
 
 // Globals
-const DATA_DIR = "./data"
+var globalFlag = false;
 var columns: number = 3;
 var currentGraphs: any[] = [];
 var currentAvailableFiles: File[] = null;
@@ -73,45 +64,50 @@ function displayDot(table: HTMLTableElement, dotList: string[], columns: number)
     return graphList;
 }
 
-function exportSVGString(container_id: string): string {
-    const svgElement = document.querySelector("#" + container_id + " > svg");
+function exportSVGString(container_id: string, callback?: CallableFunction): string {
+    const svgElement = document.querySelector("#" + container_id + " > svg") as SVGScriptElement;
     svgElement.setAttribute("version", "1.1");
     svgElement.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    if (callback != null) callback(svgElement);
     return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?> \n" + svgElement.outerHTML;
     // return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?> \n" + new XMLSerializer().serializeToString(svgElement);
 }
 
-async function exportPNGBlob(container_id: string, canvas: HTMLCanvasElement): Blob {
+function exportPNGBlob(container_id: string, canvas: HTMLCanvasElement, callback?: BlobCallback): void {
     let svgString = exportSVGString(container_id);
+    // let svgString = exportSVGString(container_id, (svg:SVGScriptElement) => {
+    //     console.log(svg.getAttribute("width"));
+    //     console.log(svg.getAttribute("height"));
+
+    //     canvas.setAttribute("width", svg.getAttribute("width"));
+    //     canvas.setAttribute("height", svg.getAttribute("height"));
+    // });
     let svgBase64Data = "data:image/svg+xml;base64," + btoa(svgString);
 
-    let context = canvas.getContext("2d");
     var image = new Image();
     image.src = svgBase64Data;
-
-    var blobContainer: Blob[] = [];
-    image.onload = async function () {
+    
+    image.onload = function () {
+        let context = canvas.getContext("2d");
+        canvas.width = image.width;
+        canvas.height = image.height;
         context.drawImage(image, 0, 0);
 
-        //save and serve it as an actual filename
-        var byteString = atob(pngCanvas.toDataURL().replace(/^data:image\/(png|jpg);base64,/, "")); //wtf is atob?? https://developer.mozilla.org/en-US/docs/Web/API/Window.atob
-        var ab = new ArrayBuffer(byteString.length);
-        var dataView = new DataView(ab);
-        var blob = new Blob([dataView], { type: "image/png" });
+        let byteString = atob(canvas.toDataURL().replace(/^data:image\/(png|jpg);base64,/, ""));
+        let ab = new ArrayBuffer(byteString.length);
+        let ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+        let dataView = new DataView(ab);
+        let binaryData = new Blob([dataView], { type: "image/png" });
 
         // var a = document.createElement("a");
         // a.download = "sample.png";
         // a.href = canvas.toDataURL("image/png");
         // a.click();
+        callback(binaryData);
     };
-    console.log("waiting...");
-    while (blobContainer == []);
-
-    return blobContainer[0];
-    // await p;
-    // while(!barrier.exported);
-    // TODO: need layers configuration
-    // p_list.push(p);
 }
 
 // Initialization
@@ -123,8 +119,7 @@ columnsInput.addEventListener("change", (event) => {
     let val = Number(element.value);
     if (val != columns) {
         columns = val;
-        console.log("Columns changed.")
-        // currentGraphs.forEach((renderer) => renderer.kill());
+        console.debug("Columns changed.")
         currentGraphs = displayDot(graphTable, loadedDots, columns);
     }
 })
@@ -145,16 +140,25 @@ fileInput.addEventListener("change", async (event) => {
             console.error(err);
         }
     }
-    console.log("File loaded.");
-    // currentGraphs.forEach((renderer) => renderer.kill());
+    console.debug("File loaded.");
     currentGraphs = displayDot(graphTable, loadedDots, columns);
     dumpGlobals();
 })
 
-saveAllButton.addEventListener("click", async () => {
+saveAllButton.addEventListener("click", () => {
     let renderers = currentGraphs.copyWithin(0, 0);
     // console.log(currentRenderers);
+
+    let type = "svg";
+    for (let index = 0; index < outputFormats.length; index++) {
+        let radioElement = outputFormats[index] as HTMLInputElement;
+        if (radioElement.checked)
+            type = radioElement.value;
+    }
+    // pack zip
     if (renderers.length > 0) {
+        let zip = new JSZip();
+
         let date = new Date()
         let zipName = replaceAll(date.toLocaleString(), "/", "-");
         zipName = replaceAll(zipName, ":", ".");
@@ -162,23 +166,22 @@ saveAllButton.addEventListener("click", async () => {
 
         console.log(`saving ${zipName}`);
 
-
-        let type = "png";
-        for (let index = 0; index < outputFormats.length; index++) {
-            let radioElement = outputFormats[index] as HTMLInputElement;
-            if (radioElement.checked)
-                type = radioElement.value;
+        var saveZip = () => {
+            zip.generateAsync({ type: "blob" })
+                .then((content) => {
+                    FileSaver.saveAs(content, `${zipName}_output.zip`);
+                });
         }
-        // pack zip
-        let zip = new JSZip();
+
         if (type == "png") {
-            let p_list: Promise<void>[] = [];
             for (let index = 0; index < renderers.length; index++) {
-                let blob = await exportPNGBlob(`graph-container_${index}`,pngCanvas);
-                let strIndex = paddIndex(index, renderers.length, "0");
-                zip.file(`output_${strIndex}.png`, blob);        
+                exportPNGBlob(`graph_${index}`, pngCanvas,
+                    (b: Blob) => {
+                        let strIndex = paddIndex(index, renderers.length, "0");
+                        zip.file(`output_${strIndex}.png`, b);
+                        if (index >= renderers.length - 1) saveZip(); // monkey patch
+                    });
             }
-            // await Promise.all(p_list);
         } else if (type == "svg") {
             for (let index = 0; index < renderers.length; index++) {
                 // TODO: need settings
@@ -187,26 +190,14 @@ saveAllButton.addEventListener("click", async () => {
                 let strIndex = paddIndex(index, renderers.length, "0");
                 zip.file(`output_${strIndex}.svg`, svgString);
             }
+            saveZip();
         } else {
             return;
         }
-        zip.generateAsync({ type: "blob" })
-            .then((content) => {
-                FileSaver.saveAs(content, `${zipName}_output.zip`);
-            });
     }
 });
 
 
-
-
-function renderPNG(arg0: any, arg1: (blob: any) => void, LAYERS: any) {
-    throw new Error("Function not implemented.");
-}
-
-function LAYERS(arg0: any, arg1: (blob: any) => void, LAYERS: any) {
-    throw new Error("Function not implemented.");
-}
 // var DEFAULTS = {
 //     margin: 20,
 //     width: 2048,
