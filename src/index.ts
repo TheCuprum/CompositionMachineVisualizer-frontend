@@ -1,4 +1,4 @@
-import JSZip from "JSZip";
+import JSZip, { forEach } from "JSZip";
 import FileSaver from "file-saver";
 
 import { paddIndex, removeAllChilds, replaceAll } from "./util"
@@ -7,6 +7,8 @@ const d3_graphviz = require("d3-graphviz");
 
 // Elements
 const fileInput = document.getElementById("file-input") as HTMLInputElement;
+const dirInput = document.getElementById("dir-input") as HTMLInputElement;
+// const reloadButton = document.getElementById("reload") as HTMLButtonElement;
 const columnsInput = document.getElementById("table-column") as HTMLInputElement;
 const outputFormats = document.getElementsByName("output-format"); // as HTMLInputElement(s)
 const saveAllButton = document.getElementById("save-all") as HTMLButtonElement;
@@ -34,15 +36,17 @@ function createTable(table: HTMLTableElement, totalItems: number, columns: numbe
         let tableRow = document.createElement("tr");
         for (let j = 0; j < columns; j++) {
             let idNumber = i * columns + j;
-            let tableData = document.createElement("td");
-            let container = document.createElement("div")
-            container.className = "graph-container";
-            container.id = `graph_${idNumber}`;
+            if (idNumber < totalItems) {
+                let tableData = document.createElement("td");
+                let container = document.createElement("div")
+                container.className = "graph-container";
+                container.id = `graph_${idNumber}`;
 
-            containerList.push(container);
+                containerList.push(container);
 
-            tableData.appendChild(container);
-            tableRow.appendChild(tableData);
+                tableData.appendChild(container);
+                tableRow.appendChild(tableData);
+            }
         }
         table.appendChild(tableRow);
     }
@@ -56,9 +60,9 @@ function displayDot(table: HTMLTableElement, dotList: string[], columns: number)
         if (index < dotList.length) {
             let graph = d3_graphviz.graphviz(`#${containerList[index].id}`, { useWorker: false }).renderDot(dotList[index]);
             graphList.push(graph);
-        } else {
-            // let content = document.createTextNode(" ");
-            // containerList[index].appendChild(content);
+            // } else {
+            //     let content = document.createTextNode(" ");
+            //     containerList[index].appendChild(content);
         }
     }
     return graphList;
@@ -86,7 +90,7 @@ function exportPNGBlob(container_id: string, canvas: HTMLCanvasElement, callback
 
     var image = new Image();
     image.src = svgBase64Data;
-    
+
     image.onload = function () {
         let context = canvas.getContext("2d");
         canvas.width = image.width;
@@ -110,27 +114,26 @@ function exportPNGBlob(container_id: string, canvas: HTMLCanvasElement, callback
     };
 }
 
-// Initialization
-columnsInput.value = columns.toString();
-
-// Events
-columnsInput.addEventListener("change", (event) => {
-    let element = event.target as HTMLInputElement;
-    let val = Number(element.value);
-    if (val != columns) {
-        columns = val;
-        console.debug("Columns changed.")
-        currentGraphs = displayDot(graphTable, loadedDots, columns);
-    }
-})
-fileInput.addEventListener("change", async (event) => {
+async function handleFileInputEvent(event: Event) {
     let element = event.target as HTMLInputElement;
     let files = element.files;
+    let fileList = [];
+    for (let index = 0; index < files.length; index++) {
+        fileList.push(files.item(index));
+    }
+    fileList.sort((a: File, b: File) => {
+        if (a.name > b.name)
+            return 1;
+        else if (a.name < b.name)
+            return -1;
+        else
+            return 0;
+    });
     // console.log(files);
     currentAvailableFiles = [];
     loadedDots = [];
-    for (let index = 0; index < files.length; index++) {
-        let f = files.item(index);
+    for (let index = 0; index < fileList.length; index++) {
+        let f = fileList[index];
         if (!f.name.endsWith(".dot"))
             continue;
         currentAvailableFiles.push(f);
@@ -142,8 +145,39 @@ fileInput.addEventListener("change", async (event) => {
     }
     console.debug("File loaded.");
     currentGraphs = displayDot(graphTable, loadedDots, columns);
-    dumpGlobals();
-})
+    // dumpGlobals();
+}
+
+// Initialization
+columnsInput.value = columns.toString();
+
+// Events
+fileInput.addEventListener("input", handleFileInputEvent);
+dirInput.addEventListener("input", handleFileInputEvent);
+
+// reloadButton.addEventListener("click", async (event) => {
+//     loadedDots = [];
+
+//     for (let index = 0; index < currentAvailableFiles.length; index++) {
+//         try {
+//             await currentAvailableFiles[index].text().then((str) => loadedDots.push(str));
+//         } catch (err) {
+//             console.error(err);
+//         }
+//         console.debug("File loaded.");
+//         currentGraphs = displayDot(graphTable, loadedDots, columns);
+//     }
+// });
+
+columnsInput.addEventListener("change", (event) => {
+    let element = event.target as HTMLInputElement;
+    let val = Number(element.value);
+    if (val != columns) {
+        columns = val;
+        console.debug("Columns changed.")
+        currentGraphs = displayDot(graphTable, loadedDots, columns);
+    }
+});
 
 saveAllButton.addEventListener("click", () => {
     let renderers = currentGraphs.copyWithin(0, 0);

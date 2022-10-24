@@ -26,11 +26,11 @@
             text-align: center;
         }
 
-        .graph-container::before {
+        /* .graph-container::before {
             content: '';
             padding-top: 100%;
             float: left;
-        }
+        } */
 
         .graph-container::after {
             content: '';
@@ -74,7 +74,12 @@
             <!-- <button id="folder-confirm">OK</button> -->
             <!-- <button id="folder-refresh">Refresh</button> -->
             <label for="file-input">Select Folder</label>
-            <input type="file" name="file-input" id="file-input" webkitdirectory directory>
+            <input type="file" name="dir-input" id="dir-input" webkitdirectory directory>
+        </div>
+        <div>
+            <label for="file-input">Or Select Files</label>
+            <input type="file" name="file-input" id="file-input" multiple>
+            <!-- <button type="button" id="reload">Reload</button> -->
         </div>
         <div>
             <label for="table-column">Column Count</label>
