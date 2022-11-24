@@ -3,7 +3,7 @@ import FileSaver from "file-saver";
 
 import { paddIndex, removeAllChilds, replaceAll } from "./util"
 
-const d3_graphviz = require("d3-graphviz");
+import { graphviz as d3_graphviz_createGraph} from "d3-graphviz";
 
 // Elements
 const fileInput = document.getElementById("file-input") as HTMLInputElement;
@@ -58,8 +58,15 @@ function displayDot(table: HTMLTableElement, dotList: string[], columns: number)
     let graphList = [];
     for (let index = 0; index < containerList.length; index++) {
         if (index < dotList.length) {
-            let graph = d3_graphviz.graphviz(`#${containerList[index].id}`, { useWorker: false }).renderDot(dotList[index]);
+            let graph = d3_graphviz_createGraph(`#${containerList[index].id}`, { useWorker: false, zoom: false }).renderDot(dotList[index]);
             graphList.push(graph);
+            let ordinalDiv = document.createElement("div");
+            let ordinalText = document.createElement("div");
+            ordinalDiv.className = "ordinal";
+            ordinalText.className = "ordinal-text";
+            ordinalText.append(`${index}`);
+            ordinalDiv.appendChild(ordinalText);
+            containerList[index].appendChild(ordinalDiv);
             // } else {
             //     let content = document.createTextNode(" ");
             //     containerList[index].appendChild(content);

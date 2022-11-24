@@ -29,6 +29,7 @@ const config = {
         new CopyPlugin({
             patterns: [
               { from: "public", to: "" },
+              { from: "styles", to: "styles" },
             ],
             options: {
               concurrency: 100,

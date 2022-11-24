@@ -1,0 +1,90 @@
+
+/* .graph-container {
+    width: 100%;
+    height: 100%;
+    min-height: 100px;
+    aspect-ratio: 1;
+    margin: 0;
+    padding: 0; 
+} */
+
+/* aspect-ratio hack */
+.graph-container {
+    position: relative;
+    width: auto;
+    margin: 0;
+    border: 2px solid black;
+    border-spacing: 0px;
+    text-align: center;
+}
+
+/* .graph-container::before {
+    content: '';
+    padding-top: 100%;
+    float: left;
+} */
+
+.graph-container::after {
+    content: '';
+    display: block;
+    clear: both;
+}
+
+.graph-container svg {
+    max-width: 100%;
+    max-height: 100%;
+    margin: 0%;
+}
+
+#graph-table {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    font-family: sans-serif;
+    border-spacing: 10px;
+    table-layout: fixed;
+}
+
+#controls {
+    position: sticky;
+    max-width: 100%;
+    max-height: 100%;
+    padding: 1em;
+    background: #ffffff99;
+}
+
+
+.ordinal {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.ordinal:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    border-style: solid;
+    border-width: 1.2rem;   
+    border-color: #2f2f2f transparent transparent #2f2f2f;
+}
+
+.ordinal-text {
+     -moz-transform: rotate(-45deg);
+    -ms-transform: rotate(-45deg);
+    -o-transform: rotate(-45deg);
+    -webkit-transform: rotate(-45deg) translateZ(0);  
+    transform: rotate(-45deg) translateZ(0); 
+    color: #FFF;
+    display: inline-block;
+    position: relative;
+    top: 0.1rem;
+    left: 0;
+    z-index: 1;
+    font-size: 12px;
+    width: 1.5rem;
+    text-align: center;
+}
